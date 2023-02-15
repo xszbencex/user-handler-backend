@@ -1,2 +1,2 @@
 # user-handler-backend
-Java Spring backend for interview excercise
+Java Spring backend for interview exercise
