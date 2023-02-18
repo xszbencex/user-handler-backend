@@ -1,13 +1,13 @@
 package interview.userhandlerbackend.service;
 
-import interview.userhandlerbackend.dto.UserDTO;
-import interview.userhandlerbackend.dto.UserResponseDTO;
+import interview.userhandlerbackend.model.UserDTO;
 import interview.userhandlerbackend.exception.CustomException;
 import interview.userhandlerbackend.model.Role;
 import interview.userhandlerbackend.model.User;
 import interview.userhandlerbackend.repository.UserRepository;
 import interview.userhandlerbackend.security.JwtTokenProvider;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -55,9 +55,11 @@ public class UserService extends BaseService<UserDTO, User> {
     final User user = mapFromDTO(userDTO);
     if (!userRepository.existsByUsername(user.getUsername())) {
       user.setPassword(passwordEncoder.encode(user.getPassword()));
-      if (user.getRoles().isEmpty()) {
+      if (user.getRoles() == null || user.getRoles().isEmpty()) {
         user.setRoles(new ArrayList<>(Collections.singletonList(Role.PUBLIC)));
       }
+      user.setActive(true);
+      user.setCreatedAt(Instant.now());
       userRepository.save(user);
       return jwtTokenProvider.createToken(user.getUsername(), user.getRoles());
     } else {
@@ -65,21 +67,15 @@ public class UserService extends BaseService<UserDTO, User> {
     }
   }
 
-  public void delete(String username) {
-    userRepository.deleteByUsername(username);
+  public void delete(Integer id) {
+    userRepository.deleteById(id);
   }
 
-  public UserResponseDTO getUserInfo(HttpServletRequest req) {
-    final User user = userRepository.findByUsername(jwtTokenProvider.getUsername(jwtTokenProvider.resolveToken(req)));
-    UserResponseDTO userResponseDTO = new UserResponseDTO();
-    userResponseDTO.setUsername(user.getUsername());
-    userResponseDTO.setEmail(user.getEmail());
-    userResponseDTO.setRoles(user.getRoles());
-    userResponseDTO.setId(user.getId());
-    return userResponseDTO;
+  public UserDTO getUserInfo(HttpServletRequest req) {
+    return mapToDTO(userRepository.findByUsername(jwtTokenProvider.getUsername(jwtTokenProvider.resolveToken(req))));
   }
 
-  public String refresh(String username) {
+  public String refreshToken(String username) {
     return jwtTokenProvider.createToken(username, userRepository.findByUsername(username).getRoles());
   }
 
@@ -87,11 +83,17 @@ public class UserService extends BaseService<UserDTO, User> {
     return userRepository.findAll().stream().map(super::mapToDTO).collect(Collectors.toList());
   }
 
-  public UserDTO getUserById(Integer id) {
+  public UserDTO updateUser(Integer id, UserDTO userDTO) {
     final Optional<User> user = userRepository.findById(id);
     if (user.isEmpty()) {
       throw new CustomException("User not found with id: " + id, HttpStatus.NOT_FOUND);
     }
-    return super.mapToDTO(user.get());
+    final User updatedUser = mapFromDTO(userDTO);
+    updatedUser.setId(user.get().getId());
+    updatedUser.setEmail(user.get().getEmail());
+    updatedUser.setPassword(user.get().getPassword());
+    updatedUser.setUsername(user.get().getUsername());
+    updatedUser.setUpdatedAt(Instant.now());
+    return super.mapToDTO(this.userRepository.save(updatedUser));
   }
 }

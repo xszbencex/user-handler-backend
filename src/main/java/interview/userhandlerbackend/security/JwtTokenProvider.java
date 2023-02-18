@@ -27,14 +27,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class JwtTokenProvider {
 
-  /**
-   * THIS IS NOT A SECURE PRACTICE! For simplicity, we are storing a static key here. Ideally, in a
-   * microservices environment, this key would be kept on a config-server.
-   */
-  @Value("${security.jwt.token.secret-key:secret-key}")
+  @Value("${security.jwt.token.secret-key}")
   private String secretKey;
 
-  @Value("${security.jwt.token.expire-length:3600000}")
+  @Value("${security.jwt.token.expire-length}")
   private long validityInMilliseconds = 3600000; // 1h
 
   private final MyUserDetails myUserDetails;
@@ -51,7 +47,7 @@ public class JwtTokenProvider {
   public String createToken(String username, List<Role> roles) {
 
     Claims claims = Jwts.claims().setSubject(username);
-    claims.put("auth", roles.stream().map(s -> new SimpleGrantedAuthority(s.getAuthority())).filter(Objects::nonNull).collect(Collectors.toList()));
+    claims.put("auth", roles.stream().map(s -> new SimpleGrantedAuthority(s.getAuthority())).collect(Collectors.toList()));
 
     Date now = new Date();
     Date validity = new Date(now.getTime() + validityInMilliseconds);
